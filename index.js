@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config()
 
-const { MongoClient, ServerApiVersion,ObjectId } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -31,39 +31,97 @@ async function run() {
     //   await client.connect();
 
 
-       const customRequestCollection =client.db("assetDb").collection("customRequests")
-       const productCollection =client.db("assetDb").collection("products")
+    const customRequestCollection = client.db("assetDb").collection("customRequests")
+    const productCollection = client.db("assetDb").collection("products")
     // Connect the client to the server	(optional starting in v4.7)
     // Send a ping to confirm a successful connection
 
 
     app.post('/customRequests', async (req, res) => {
-        const customRequest = req.body;
-        const result = await customRequestCollection.insertOne(customRequest);
-        res.send(result);
-      });
+      const customRequest = req.body;
+      const result = await customRequestCollection.insertOne(customRequest);
+      res.send(result);
+    });
 
 
-      app.get('/customRequests', async (req, res) => {
-        const result = await customRequestCollection.find().toArray();
-        res.send(result);
-      });
+    app.get('/customRequests', async (req, res) => {
+      let query = {}
+      if (req.query?.email) {
+        query = { email: req.query.email }
+      }
+      const result = await customRequestCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get('/customRequests/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      console.log(query)
+
+
+      const result = await customRequestCollection.findOne(query);
+      console.log(result)
+      res.send(result);
+    })
+
+    app.put('/customRequests/:id', async (req, res) => {
+      const id = req.params.id
+      const filter = { _id: new ObjectId(id) }
+      const options = { upsert: true }
+      const updatedRequest = req.body
+
+      const blog = {
+        $set: {
+          name: updatedRequest.updatedName,
+          price: updatedRequest.updatedPrice,
+          image: updatedRequest.updatedImage,
+          type: updatedRequest.updatedTyPe,
+          whyNeeded: updatedRequest.updatedWhyNeeded,
+          additionalInfo: updatedRequest.updatedAdditionalInfo,
+        }
+      }
+
+      const result = await customRequestCollection.updateOne(filter, blog, options)
+      res.send(result)
+    })
+
     app.post('/products', async (req, res) => {
-        const product = req.body;
-        const result = await productCollection.insertOne(product);
-        res.send(result);
-      });
+      const product = req.body;
+      const result = await productCollection.insertOne(product);
+      res.send(result);
+    });
 
 
-      app.get('/products', async (req, res) => {
-        const result = await productCollection.find().toArray();
-        res.send(result);
-      });
+    app.get('/products', async (req, res) => {
+      const result = await productCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get('/api/assetSum', async (req, res) => {
+      try {
+        const result = await productCollection.aggregate([
+          {
+            $group: {
+              _id: '$name',
+              totalQuantity: { $sum:{ $toInt: '$quantity' } },
+              type: { $first: '$type' },
+              
+            }
+          }
+        ]).toArray();
+
+        res.json(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
 
 
 
 
-  
+
+
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
@@ -77,9 +135,9 @@ run().catch(console.dir);
 
 
 app.get('/', (req, res) => {
-    res.send('assignment 12 is running')
+  res.send('assignment 12 is running')
 })
 
 app.listen(port, () => {
-    console.log(` assignment 12 Server is running on port ${port}`)
+  console.log(` assignment 12 Server is running on port ${port}`)
 })
