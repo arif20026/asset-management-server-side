@@ -99,15 +99,38 @@ async function run() {
 
     app.get('/api/assetSum', async (req, res) => {
       try {
+        const assetTypeFilter = req.query.assetType || '';
+
+        const searchTerm = req.query.searchTerm || '';
+
+        const matchCondition = {};
+
+     
+
+        if (assetTypeFilter) {
+          matchCondition.type = assetTypeFilter;
+        }
+
+        if (searchTerm) {
+          matchCondition.$or = [
+              { _id: { $regex: searchTerm, $options: 'i' } },
+              // Add other fields you want to search here
+          ];
+      }
+
+     
+
         const result = await productCollection.aggregate([
+          {
+            $match: matchCondition,
+          },
           {
             $group: {
               _id: '$name',
-              totalQuantity: { $sum:{ $toInt: '$quantity' } },
               type: { $first: '$type' },
-              
-            }
-          }
+              totalQuantity: { $sum: { $toInt: '$quantity' } },
+            },
+          },
         ]).toArray();
 
         res.json(result);
